@@ -1,0 +1,6 @@
+00_raw/
+02_blast/Datura_protein_db.*
+*.out
+*.log
+*.slurmout
+*.tmp
