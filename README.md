@@ -52,7 +52,7 @@ TS_BAHD_project_final/
 ├── protocol.md      # Full protocol needed to rerun workflow
 ├── notebook.md      # Chronological analysis log
 ├── final_report.md  # Written report for the project
-├── submission_note.md 
+├── submission_notes.md 
 └── README.md        # This file
 ```
 ## 4. Workflow summary

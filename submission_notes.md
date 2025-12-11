@@ -20,7 +20,7 @@ Step 3 — Run all R analyses
 
 Open OSC RStudio and use Rscript:
 ```r
-setwd("/fs/ess/PAS2880/users/<YOUR_USER>/TS_BAHD_project_final")
+setwd("/fs/ess/PAS2880/users/dengyaxin1156/TS_BAHD_project_final")
 source("scripts/analyze_blast.R")
 source("scripts/plot_bahd_tree.R")
 source("scripts/analyze_snps.R")
