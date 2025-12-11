@@ -48,6 +48,7 @@ TS_BAHD_project_final/
 ├── 04_phylogeny/    # Newick tree files
 ├── 05_results/      # Final figures & tables used in report
 ├── scripts/         # All bash/R scripts used in workflow
+├── .gitignore       # Ignore 00_raw/, 02_blast, Datura_protein_db.*, *.out, *.log, *.slurmout, *.tmp
 ├── protocol.md      # Full protocol needed to rerun workflow
 ├── notebook.md      # Chronological analysis log
 ├── final_report.md  # Written report for the project
