@@ -2,7 +2,7 @@
 
 - Author: Yaxin Deng
 - Course: AU25 PLNTPTH 5006 - Comput Omics Data (37851)
-- Repository: TS_BAHD_project_final_Dec11
+- Repository: Final_Project_Dec
 
 ## Abstract
 
