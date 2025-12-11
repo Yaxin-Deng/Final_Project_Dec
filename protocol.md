@@ -1,330 +1,268 @@
 # Project protocol: BAHD acyltransferases and TS-like enzymes in *Datura stramonium*
 
-## 1. Project overview
+**Author**: Yaxin Deng
+**Project directory**: /fs/ess/PAS2880/users/dengyaxin1156/TS_BAHD_project_final/
+**Purpose**: Provide a complete, reproducible workflow for identifying and comparing BAHD acyltransferases and TS-like enzymes in *Datura stramonium*.
+Anyone with access to this repository, the OSC cluster, and data files in 00_raw/ should be able to reproduce all results.
+## 1. Data description
 
-This project focuses on BAHD acyltransferases that are closely related to the *Atropa belladonna* tigloyltransferase (TS; aba_locus_5896) and on TS-like enzymes in *Datura stramonium*. Using protein sequences from the published clade 3 BAHD phylogeny (Fig. 2E) and the *D. stramonium* proteome, I will:
+All raw files are stored in 00_raw/ and excluded from Git tracking via .gitignore.
+### 1.1 BAHD clade 3 reference proteins
 
-1. Identify TS-like BAHD acyltransferases in *D. stramonium* using BLAST.
-2. Place *Datura* candidates in a BAHD clade 3 phylogenetic tree.
-3. Compare coding sequences of TS and TS-like acyltransferases using alignment-based SNP analysis.
+Protein accessions were obtained from Figure 2E of: 
 
-## 2. Directory structure
+Zeng et al. (2024), **Discovering a mitochondrion-localized BAHDacyltransferase involved in calystegine biosynthesis and engineering the production of *3β*-tigloyloxytropane**
 
-- `00_raw/` — raw input files (FASTA sequences).
-- `02_blast/` — BLAST databases and tab-delimited BLAST results.
-- `03_alignments/` — multiple sequence alignments (protein and CDS).
-- `03_snp/` — SNP-related files (aligned CDS, VCF).
-- `04_phylogeny/` — tree files (Newick) and intermediate outputs.
-- `05_results/` — final figures and summary tables used in the report.
-- `scripts/` — all shell and R scripts used in the analysis.
-- `protocol.md` — this protocol.
-- `notebook.md` — detailed log/diary of commands and notes.
+For each accession, the corresponding protein FASTA was retrieved from NCBI Protein using its accession number. I add the Datura TS-like enzyme protein into this file.
 
-## 3. Software used
+All sequences were combined into:
+```
+00_raw/BAHD_clade3_ref_plus_DsTS.fa
+```
 
-All tools are from the course materials and OSC environment:
+This file also includes the putative *Datura stramonium* TS candidate protein.
+### 1.2 *Atropa belladonna* TS CDS
 
-- BLAST+ (makeblastdb, blastp)
-- MAFFT (for multiple sequence alignment)
-- snp-sites (for SNP detection)
-- R (tidyverse, ape / ggtree for plotting)
+Four A. belladonna TS isoforms were provided by the instructor and stored as:
+```
+00_raw/Atropa_TS.cds.fa
+```
+### 1.3 *Datura stramonium* TS candidate CDS
+```
+00_raw/Datura_TS_candidate.cds.fa
+```
+A combined FASTA containing all TS-like CDS was created as:
+```
+00_raw/TS_like_cds.fa
+```
+1.4 *D. stramonium* proteome
+A lab-provided protein FASTA was used for BLAST searches:
+```
+00_raw/Datura_genome_protein.fa
+```
+## 2. Software environment
 
-## 4. Analysis steps
+All tools used in this project:
 
-### 4.1 BLAST analysis: clade 3 BAHD vs *Datura* proteome
+- BLAST+
+- MAFFT
+- snp-sites
+- R / tidyverse / ape (OSC RStudio environment)
 
-**Goal.**  
-Find *D. stramonium* proteins that are most similar to known clade 3 BAHD acyltransferases, including the *A. belladonna* TS and TS-like candidates.
-
-**Input files (from `00_raw/`):**
-
-- `BAHD_clade3_ref_plus_DsTS.fa` — clade 3 BAHD proteins from Fig. 2E plus TS-like sequences from *Datura*.
-- `Datura_genome_protein.fa` — *D. stramonium* proteome.
-
-**Script:** `scripts/run_blast.sh`
-
-This script:
-
-1. Loads the BLAST+ module.
-2. Builds a protein BLAST database from `Datura_genome_protein.fa`.
-3. Runs `blastp` with `BAHD_clade3_ref_plus_DsTS.fa` as queries against the database.
-4. Saves the tab-delimited results in `02_blast/blast_clade3_vs_Ds_proteome.tab`.
-
-**How to run:**
+OSC did not provide modules for MAFFT or snp-sites during this project.  
+Following course recommendations for reproducible environments, both tools were installed in the  
+existing `blast_env` Conda environment that was already used earlier in class:
 
 ```bash
-cd /fs/ess/PAS2880/users/dengyaxin1156/TS_BAHD_project_final
+module load miniconda3/24.1.2-py310
+conda activate blast_env
+conda install -y -c bioconda mafft snp-sites
+```
+**At OSC:**
+```bash
+module load miniconda3/24.1.2-py310
+conda activate blast_env
+```
+All Slurm scripts therefore begin by loading miniconda and activating blast_env before running
 
-chmod +x scripts/run_blast.sh
+blast_env contains:
 
+- MAFFT
+
+- snp-sites
+
+- BLAST+
+
+## 3. Directory structure
+```
+00_raw/              Raw input data (gitignored)
+02_blast/            BLAST databases + results
+03_alignments/       Protein and CDS alignments
+03_snp/              SNP VCF + aligned CDS
+04_phylogeny/        Newick tree files
+05_results/          Final figures + summary tables
+scripts/             All bash and R scripts
+protocol.md          This file
+notebook.md          Notebook-style logs
+final_report.md      Written report
+
+```
+## 4. Workflow overview
+
+The full workflow:
+
+1. BLASTp: Identify Datura proteins matching BAHD clade 3.
+
+2. MAFFT: Align BAHD protein sequences.
+
+3. Phylogeny: Build a neighbor-joining tree.
+
+4. TS-like CDS alignment using MAFFT.
+
+5. SNP calling using snp-sites.
+
+6. R analysis: BLAST summary, phylogeny plotting, SNP visualization.
+
+All scripts use only relative paths to ensure portability and full reproducibility.
+
+## 5. Detailed steps
+### 5.1 BLAST analysis (protein)
+**Goal**: Identify Datura proteins similar to BAHD clade 3 sequences.
+**Input:**
+```
+00_raw/BAHD_clade3_ref_plus_DsTS.fa
+00_raw/Datura_genome_protein.fa
+```
+**Script**: scripts/run_blast.sh
+This script:
+
+1. Loads BLAST+
+
+2. Builds a protein database from Datura_genome_protein.fa
+
+3. Runs blastp using the BAHD reference proteins as queries
+
+4. Writes output to:
+```
+02_blast/blast_clade3_vs_Ds_proteome.tab
+```
+**Run:**
+```bash
 sbatch scripts/run_blast.sh
 ```
-The output was:
+## 5.2 Protein alignment and 
+### 5.2.1 MAFFT alignment
+**Input:**
 ```
-Submitted batch job 42368936
+00_raw/BAHD_clade3_ref_plus_DsTS.fa
 ```
-
-The output file was:
+**Script**: scripts/mafft_bahd.slurm
+Output:
 ```
-02_blast/BAHD_clade3_vs_Ds_proteome.tab
-```
-
-Outputs:
-
-Intermediate:
-
-02_blast/Datura_protein_db.* — BLAST protein database.
-
-02_blast/blast_clade3_vs_Ds_proteome.tab — BLASTP output in outfmt 6.
-
-Final (after R analysis, see Section 4.4):
-
-A summary table of top BLAST hits and at least one plot saved in 05_results/ (e.g. 05_results/blast_top_hits_barplot.png).
-
-
-### 4.2 MAFFT + phylogeny
-Multiple sequence alignment and phylogeny (protein)
-
-Planned steps:
-
-- Combine clade 3 BAHD reference proteins and Datura TS-like sequences into one FASTA.
-
-- Use MAFFT to align the protein sequences and save the alignment in 03_alignments/.
-
-- Build a phylogenetic tree (using a method covered in the course or derived from the alignment).
-
-- Visualize the tree in R and save annotated tree figures in 05_results/.
-
-**Goal.**  
-Align clade 3 BAHD protein sequences (including the *A. belladonna* TS and the
-putative *D. stramonium* TS-like proteins) and construct a simple phylogenetic
-tree to visualize their relationships.
-
-**Input files:**
-
-- `00_raw/BAHD_clade3_ref_plus_DsTS.fa` — clade 3 BAHD proteins from Fig. 2E plus TS-like sequences.
-
-#### 4.2.1 MAFFT alignment (OSC bash)
-
-**Script:** `scripts/mafft_bahd.slurm`
-
-This Slurm script:
-
-1. Loads the MAFFT module.
-2. Aligns all sequences in `00_raw/BAHD_clade3_ref_plus_DsTS.fa` using `mafft --auto`.
-3. Saves the alignment to `03_alignments/BAHD_clade3_plus_DsTS_aligned.fa`.
-
-#### Note: 
-```
-OSC does not provide a `mafft` module (attempting `module load mafft`
-results in an "unknown module" error). Therefore, following the same approach
-used in the course for BLAST+, MAFFT is installed in the existing `blast_env`
-Conda environment:
-
-- load `miniconda3/24.1.2-py310`
-- activate `blast_env`
-- install MAFFT from the bioconda channel (only once)
-
-The Slurm script `scripts/mafft_bahd.slurm` then loads `miniconda3`,
-activates `blast_env`, and runs `mafft --auto`.
-```
-
-**How to run:**
-
-```bash
-cd /fs/ess/PAS2880/users/dengyaxin1156/TS_BAHD_project_final
-sbatch scripts/mafft_bahd.slurm
-
-Output (intermediate):
-
 03_alignments/BAHD_clade3_plus_DsTS_aligned.fa
-
-03_alignments/mafft_bahd_<jobid>.out (Slurm log)
 ```
-
-#### 4.2.2 Tree construction and visualization in RStudio
-
-Script: scripts/plot_bahd_tree.R
-
-This R script (run in the OSC RStudio environment):
-
-1. Uses seqinr::read.alignment() to read the MAFFT alignment.
-
-2. Uses ape::dist.alignment() to compute a distance matrix (1 − identity).
-
-3. Builds a neighbor-joining tree with ape::nj().
-
-4. Saves the tree in Newick format to 04_phylogeny/BAHD_tree.nwk.
-
-5. Plots the tree using base R plot() and saves it to 05_results/BAHD_tree_basic.png.
-
-How to run (in RStudio):
-```r
-setwd("/fs/ess/PAS2880/users/dengyaxin1156/TS_BAHD_project_final")
-library(seqinr)
-library(ape)
-source("scripts/plot_bahd_tree.R")
-```
-### Outputs:
-
-- Intermediate:
-
-    04_phylogeny/BAHD_tree.nwk
-
-- Final (used in the report):
-
-    05_results/BAHD_tree_basic.png
-
-### 4.3 SNP analysis
-
-Planned steps:
-
-- Create a FASTA file with TS and TS-like CDS from A. belladonna and D. stramonium.
-
-- Use MAFFT to align the CDS and save the alignment in 03_snp/.
-
-- Run snp-sites on the aligned CDS to call SNPs and generate a VCF file in 03_snp/.
-
-- Use R to summarize SNP counts per gene and visualize the results, saving plots/tables in 05_results/.
-
-### 4.3 SNP analysis of TS and TS-like CDS
-
-**Goal.**  
-Compare coding sequences of the *Atropa belladonna* TS isoforms and the
-putative *Datura stramonium* TS candidate, and summarize SNP variation
-across these CDS.
-
-**Input files (00_raw/):**
-
-- `Atropa_TS.cds.fa` — four isoforms of the *A. belladonna* TS CDS.
-- `Datura_TS_candidate.cds.fa` — CDS of the *D. stramonium* TS-like candidate.
-- `TS_like_cds.fa` — combined FASTA (Atropa TS isoforms + Datura TS candidate).
-
----
-
-#### 4.3.1 MAFFT alignment of TS-like CDS (OSC bash)
-
-**Script:** `scripts/mafft_ts_cds.slurm`
-
-This Slurm script:
-
-1. Loads the Conda `blast_env` environment (which contains MAFFT).
-2. Aligns all sequences in `00_raw/TS_like_cds.fa` with `mafft --auto`.
-3. Saves the aligned CDS to `03_snp/TS_like_cds_aligned.fa`.
-
-**How to run:**
-
+Run:
 ```bash
-cd /fs/ess/PAS2880/users/dengyaxin1156/TS_BAHD_project_final
-sbatch scripts/mafft_ts_cds.slurm
+sbatch scripts/mafft_bahd.slurm
 ```
-
-The intermediate output was:
-
-- 03_snp/TS_like_cds_aligned.fa
-
-#### 4.3.2 SNP calling with snp-sites (OSC bash)
-
-Script: scripts/snp_ts_cds.slurm
-
+### 5.2.2 Phylogeny construction (RStudio)
+**Script:**
+```bash
+scripts/plot_bahd_tree.R
+```
 This script:
 
-1. Activates the same blast_env environment where snp-sites is installed.
+1. Reads MAFFT alignment
 
-2. Runs snp-sites -v on 03_snp/TS_like_cds_aligned.fa.
+2. Computes distance matrix (dist.alignment)
 
-3. Writes SNP calls in VCF format to 03_snp/TS_like_snps.vcf.
+3. Builds neighbor-joining tree (nj())
 
-How to run:
+4. Saves:
+```
+04_phylogeny/BAHD_tree.nwk
+05_results/BAHD_tree_nj.pdf
+```
+Run in RStudio:
+```r
+setwd("TS_BAHD_project_final")
+source("scripts/plot_bahd_tree.R")
+```
+## 5.3 TS-like CDS alignment + SNP 
+### Rationale for SNP analysis 
+
+SNP analysis was included to compare sequence variation among TS-like CDS across *Atropa* and 
+*Datura*. Divergence at the coding level can indicate potential functional differences between 
+isoforms and across species, especially in BAHD acyltransferases where small amino acid changes 
+may alter substrate preference or catalytic efficiency.
+
+### 5.3.1 MAFFT alignment of CDS
+**Input:**
+```
+00_raw/TS_like_cds.fa
+```
+**Script:** scripts/mafft_ts_cds.slurm
+Output:
+```
+03_snp/TS_like_cds_aligned.fa
+```
+Run:
 ```bash
-cd /fs/ess/PAS2880/users/dengyaxin1156/TS_BAHD_project_final
+sbatch scripts/mafft_ts_cds.slurm
+```
+### 5.3.2 SNP calling using snp-sites
+**Script:** scripts/snp_ts_cds.slurm
+Output:
+```
+03_snp/TS_like_snps.vcf
+```
+Run:
+```bash
 sbatch scripts/snp_ts_cds.slurm
 ```
-The intermediate output was:
-- 03_snp/TS_like_snps.vcf
-
-#### 4.3.3 R-based SNP summary and visualization (RStudio)
-
-Script: scripts/analyze_snps.R
-
-This script (run in the OSC RStudio environment):
-
-1. Reads 03_snp/TS_like_snps.vcf using readr::read_tsv, skipping meta-lines
-starting with ##.
-
-2. Identifies sample columns corresponding to the Atropa TS isoforms and the
-Datura TS candidate.
-
-3. Reshapes the genotype matrix into a long format using tidyverse.
-
-4. Counts non-missing genotype calls per sequence.
-
-5. Saves a summary table:
-
-    - 05_results/TS_like_snp_counts.tsv
-
-6. Creates a barplot of SNP counts per sequence and saves it to:
-
-    - 05_results/TS_like_snp_counts.png
-
-How to run in RStudio:
-```r
-setwd("/fs/ess/PAS2880/users/dengyaxin1156/TS_BAHD_project_final")
-library(tidyverse)
-source("scripts/analyze_snps.R")
+## 5.4 R analyses: BLAST + SNP + phylogeny
+### 5.4.1 BLAST top-hit summary
+**Script:** scripts/analyze_blast.R
+Output:
+```bash
+05_results/blast_top_hits_summary.tsv
+05_results/blast_top_hits.png
 ```
-
-### 4.4 R-based analysis of BLAST results
-
-Planned R scripts (stored in scripts/):
-
-- analyze_blast.R — read the BLAST output, find the top hit for each query, and visualize percent identity and bit scores (e.g. barplots) and save results in 05_results/.
-
-- plot_tree.R — read the BAHD phylogenetic tree and produce annotated tree plots saved in 05_results/.
-
-- analyze_snps.R — read SNP calls from snp-sites, summarize variation across TS and TS-like genes, and save figures/tables in 05_results/.
-
-**Goal.**  
-Summarize BLASTP results and visualize the similarity between clade 3 BAHD proteins and the *Datura stramonium* proteome.
-
-**Input:**
-
-- `02_blast/blast_clade3_vs_Ds_proteome.tab` — BLASTP output in outfmt 6 format.
-
-**Script:**
-
-- `scripts/analyze_blast.R`
-
-This script (run in the OSC RStudio environment used in the course):
-
-1. Loads the `tidyverse` package.
-2. Reads the BLAST table with column names (`qseqid`, `sseqid`, `pident`, `length`, `mismatch`, `gapopen`, `qstart`, `qend`, `sstart`, `send`, `evalue`, `bitscore`).
-3. For each query sequence, selects the top hit based on the highest bitscore.
-4. Saves a summary table to `05_results/blast_top_hits_summary.tsv`.
-5. Creates a barplot of percent identity for the top hits and saves it to `05_results/blast_top_hits.png`.
-
-**How to run (in RStudio):**
-
+Run:
 ```r
-setwd("/fs/ess/PAS2880/users/dengyaxin1156/TS_BAHD_project_final")
-library(tidyverse)
 source("scripts/analyze_blast.R")
 ```
+### 5.4.2 SNP summary and rationale
 
-## To-do list:
+The SNP analysis compares coding sequence divergence among the four *Atropa belladonna* TS
+isoforms and the *Datura stramonium* TS candidate. Initially, the script attempted to quantify the
+number of “non-missing genotype calls,” but this approach was incorrect because `snp-sites`
+outputs only variable positions; therefore all sequences appeared to have the same count.
 
- 1. Organize raw files in 00_raw/.
+This issue was diagnosed and the SNP workflow was corrected.
 
- 2.  Implement and run BLAST analysis (scripts/run_blast.sh).
+The final version of `scripts/analyze_snps.R` instead counts **ALT alleles** for each sequence:
 
- 3. Create multiple sequence alignments for BAHD clade 3 and TS-like CDS.
+- A genotype of `0` indicates the same allele as the reference (usually the first sequence).
+- A genotype of `1`, `2`, … indicates an alternate allele, i.e., a true SNP relative to the reference.
 
- 4. Build a phylogenetic tree and visualize it in R.
+The final metric, `alt_snps`, reflects how many SNP sites differ from the reference sequence.
+This approach provides a meaningful estimate of CDS divergence and is appropriate for distinguishing 
+intraspecific isoform differences (among *Atropa* sequences) from interspecific divergence  
+(between *Atropa* and *Datura*).
 
- 5. Run snp-sites on aligned TS-like CDS and summarize SNPs in R.
+**Script:**  
+`scripts/analyze_snps.R`
 
- 6. Save final plots and tables to 05_results/.
+**Output:**  
+```
+05_results/TS_like_snp_counts.tsv
+05_results/TS_like_snp_counts.png
+```
 
- 7. Update this protocol and notebook.md during the analysis.
 
- 8. Write the final report using results from 05_results/.
+**Run in RStudio:**  
+```r
+source("scripts/analyze_snps.R")
+```
+## 6. Full reproducibility: minimal command list
+
+Anyone can reproduce the full workflow using:
+```bash
+sbatch scripts/run_blast.sh
+sbatch scripts/mafft_bahd.slurm
+sbatch scripts/mafft_ts_cds.slurm
+sbatch scripts/snp_ts_cds.slurm
+```
+Then in RStudio:
+```r
+source("scripts/analyze_blast.R")
+source("scripts/plot_bahd_tree.R")
+source("scripts/analyze_snps.R")
+```
+These commands reproduce all results shown in the final report from raw FASTA files.
+
+## 7. Notes on project organization
+Raw data are not tracked in Git (00_raw/ is gitignored).
+
+All results required for the report are in 05_results/.

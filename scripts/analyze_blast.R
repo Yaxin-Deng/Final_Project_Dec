@@ -1,23 +1,17 @@
 #!/usr/bin/env Rscript
-
-# --------------------------------------------------------------
 # analyze_blast.R
-#
-# This script reads the BLASTP output (outfmt 6) from:
-#   02_blast/blast_clade3_vs_Ds_proteome.tab
-# It extracts the top hit for each query (highest bitscore),
-# saves a summary table, and creates a barplot of percent
-# identity for the top hits.
+# Summarize BLASTP results of clade 3 BAHD proteins
+# against the Datura proteome.
 #
 # Input:
-#   02_blast/blast_clade3_vs_Ds_proteome.tab
+#   02_blast/blast_clade3_vs_Ds_proteome.tab  (outfmt 6)
 #
 # Output (saved in 05_results/):
 #   blast_top_hits_summary.tsv
 #   blast_top_hits.png
-# --------------------------------------------------------------
 
-# Load tidyverse (as in the course)
+
+# Load tidyverse
 library(tidyverse)
 
 # Make sure the results directory exists
@@ -25,7 +19,7 @@ if (!dir.exists("05_results")) {
   dir.create("05_results")
 }
 
-# 1. Read BLAST outfmt 6 table
+# 1. Read BLAST outfmt 6 table with explicit column names
 blast <- read_tsv(
   "02_blast/blast_clade3_vs_Ds_proteome.tab",
   col_names = c(

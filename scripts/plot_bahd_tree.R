@@ -1,56 +1,55 @@
+#!/usr/bin/env Rscript
 # scripts/plot_bahd_tree.R
-# This script reads a multiple-sequence alignment in FASTA format,
-# converts it into an alignment object, computes a distance matrix,
-# constructs a Neighbor-Joining (NJ) tree, and saves the tree
-# as a PDF and a Newick file in 05_results/.
-
+# Build a Neighbor-Joining tree from MAFFT-aligned BAHD proteins.
+#
+# Input:
+#   03_alignments/BAHD_clade3_plus_DsTS_aligned.fa
+#
+# Output:
+#   04_phylogeny/BAHD_tree_nj.nwk
+#   05_results/BAHD_tree_nj.pdf
 library(seqinr)
 library(ape)
 
-# 1. Path to the aligned FASTA file
-align_file <- "03_alignments/BAHD_clade3_ref_plus_DsTS_aligned.fa"
+# 1. Set input and output paths (relative to project root)
+align_file <- "03_alignments/BAHD_clade3_plus_DsTS_aligned.fa"
+tree_nwk   <- "04_phylogeny/BAHD_tree_nj.nwk"
+tree_pdf   <- "05_results/BAHD_tree_nj.pdf"
 
-# 2. Basic validation: check that the file exists and is not empty
+# 2. Basic checks
 if (!file.exists(align_file)) {
   stop("Alignment file not found: ", align_file)
 }
-
 if (file.info(align_file)$size == 0) {
   stop("Alignment file is empty: ", align_file)
 }
 
-# 3. Read FASTA file
-# Use seqinr::read.fasta to avoid conflicts with other packages
-aln <- seqinr::read.fasta(
-  file = align_file,
-  seqtype = "AA",
-  as.string = TRUE,
-  set.attributes = FALSE
+# 3. Make sure output dirs exist
+if (!dir.exists("04_phylogeny")) {
+  dir.create("04_phylogeny")
+}
+if (!dir.exists("05_results")) {
+  dir.create("05_results")
+}
+
+# 4. Read alignment (format = FASTA protein alignment)
+ali <- read.alignment(
+  file   = align_file,
+  format = "fasta"
 )
 
-# Convert list of sequences into an alignment object
-ali <- seqinr::as.alignment(
-  nb  = length(aln),
-  nam = names(aln),
-  seq = unlist(aln)
-)
+# 5. Distance matrix (1 - identity)
+d <- dist.alignment(ali, "identity")
 
-# 4. Compute distance matrix using identity model
-d <- seqinr::dist.alignment(ali, "identity")
+# 6. Neighbor-Joining tree
+tree <- nj(d)
 
-# 5. Construct Neighbor-Joining tree
-tree <- ape::nj(d)
+# 7. Save Newick tree
+write.tree(tree, file = tree_nwk)
 
-# 6. Plot the tree to a PDF (not on RStudio graphics device)
-out_pdf <- "05_results/BAHD_tree_nj.pdf"
-pdf(out_pdf)
-ape::plot.phylo(tree, cex = 0.5)
-title("BAHD reference proteins - Neighbor-Joining tree")
+# 8. Save PDF tree plot
+pdf(tree_pdf, width = 7, height = 7)
+plot(tree, cex = 0.5)
+title("BAHD clade 3 and Datura TS candidate (NJ tree)")
 dev.off()
 
-# 7. Save the tree in Newick format
-out_tree <- "05_results/BAHD_tree_nj.nwk"
-ape::write.tree(tree, file = out_tree)
-
-cat("Tree figure saved to: ", out_pdf, "\n")
-cat("Newick tree saved to: ", out_tree, "\n")

@@ -6,10 +6,10 @@
   "description": "00_raw/Datura_genome_protein.fa",
   "number-of-letters": 14161165,
   "number-of-sequences": 52106,
-  "last-updated": "2025-12-06T17:17:00",
+  "last-updated": "2025-12-08T22:48:00",
   "number-of-volumes": 1,
-  "bytes-total": 22394644,
-  "bytes-to-cache": 14630240,
+  "bytes-total": 22394652,
+  "bytes-to-cache": 14630248,
   "files": [
     "Datura_protein_db.pdb",
     "Datura_protein_db.phr",

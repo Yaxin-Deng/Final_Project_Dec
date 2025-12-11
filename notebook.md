@@ -1,220 +1,253 @@
 # Project notebook
-## 2025-12-01
 
-- Created new project directory `TS_BAHD_project_final` on OSC.
-- Set up subdirectories: `00_raw`, `02_blast`, `03_alignments`, `03_snp`, `04_phylogeny`, `05_results`, `scripts`.
-- Copied raw FASTA files from the older project into `00_raw/` and renamed them:
-  - `ANN02033_cds_JP.fna.txt` → `Datura_TS_candidate.cds.fa`
-  - `DS_TS_ANN02033.prot.fa` → `Datura_TS_candidate.protein.fa`
-  - `Clade3_Protein.fa` → `BAHD_clade3_ref_plus_DsTS.fa`
-  - `DS_protein.faa` → `Datura_genome_protein.fa`
-- Created `protocol.md` and added sections on project overview, directory structure, and BLAST analysis.
+## 2025-12-01 — Project setup & raw data organization
 
-## 2025-12-02
+**Rationale**
 
-- Wrote BLAST script `scripts/run_blast.sh` (builds Datura protein database and runs BLASTP with clade 3 BAHD queries).
-- Submitted the BLAST job on OSC:
+The old project folder was disorganized (raw data mixed with results, confusing file names).
+Instructor feedback emphasized the need for a clean, reproducible directory structure.
 
+**Process**
+
+- Created new project directory:
 ```bash
-cd /fs/ess/PAS2880/users/dengyaxin1156/TS_BAHD_project_final
+mkdir -p TS_BAHD_project_final/{00_raw,02_blast,03_alignments,03_snp,04_phylogeny,05_results,scripts}
+```
+- Copied raw FASTA files from old project and standardized file names:
+
+  - ANN02033_cds_JP.fna.txt → Datura_TS_candidate.cds.fa
+
+  - DS_TS_ANN02033.prot.fa → Datura_TS_candidate.protein.fa
+
+  - Clade3_Protein.fa → BAHD_clade3_ref_plus_DsTS.fa
+
+  - DS_protein.faa → Datura_genome_protein.fa
+
+- Started drafting protocol.md.
+
+**Next step**
+Write BLAST pipeline and confirm Datura TS-like orthologs.
+## 2025-12-02 — BLASTP setup and first run
+**Rationale**
+To identify BAHD acyltransferases in *Datura stramonium*, I needed to BLAST published clade 3 BAHD sequences (including Atropa TS) against the Datura proteome.
+**Process**
+Wrote scripts/run_blast.sh using relative paths (instructor requirement).
+Submitted job:
+```bash
 sbatch scripts/run_blast.sh
 ```
-Next step: check that 02_blast/blast_clade3_vs_Ds_proteome.tab was created and start writing scripts/analyze_blast.R for R-based summaries.
+**Verification**
+Checked creation of:
 
-## 2025-12-04
+  - 02_blast/Datura_protein_db.*
 
-- Opened OSC RStudio and set the working directory:
-
+  - 02_blast/blast_clade3_vs_Ds_proteome.tab
+Confirmed BLAST output contains valid hits.
+**Next step**
+Summarize BLAST output in R.
+## 2025-12-04 — R-based BLAST analysis
+**Rationale**
+Instructor requested that we include R-based analyses (plots/tables).
+**Process**
+In OSC RStudio:
 ```r
-setwd("/fs/ess/PAS2880/users/dengyaxin1156/TS_BAHD_project_final")
-```
-
-- Created an R script scripts/analyze_blast.R to process the BLASTP output
-(02_blast/blast_clade3_vs_Ds_proteome.tab). The script:
-
-- reads the BLAST outfmt 6 table,
-
-- selects the top hit (highest bitscore) for each query BAHD protein,
-
-- saves a summary table,
-
-- creates a barplot of percent identity.
-
-In RStudio, I run:
-
-```r
-library(tidyverse)
+setwd("/fs/.../TS_BAHD_project_final")
 source("scripts/analyze_blast.R")
 ```
-New result files were generated in 05_results/:
+Script produced:
+  - 05_results/blast_top_hits_summary.tsv
 
-blast_top_hits_summary.tsv
+  - 05_results/blast_top_hits.png
+**Next step**
+Align BAHD protein sequences for phylogeny.
+## 2025-12-05 — MAFFT protein alignment for phylogeny
+**Rationale**
+To understand where the Datura TS-like enzyme sits in BAHD clade 3, I needed an alignment for tree building.
+**Process**
+Wrote:
 
-blast_top_hits.png
+scripts/mafft_bahd.slurm
 
-## 2025-12-05 (MAFFT and phylogeny)
-
-- Wrote a Slurm script `scripts/mafft_bahd.slurm` to align clade 3 BAHD protein
-  sequences (including Atropa TS and Datura TS-like proteins) with MAFFT.
-- Submitted the job on OSC:
-
+Tried running MAFFT:
 ```bash
-cd /fs/ess/PAS2880/users/dengyaxin1156/TS_BAHD_project_final
 sbatch scripts/mafft_bahd.slurm
 ```
-- The MAFFT alignment was saved to:
-
-  - 03_alignments/BAHD_clade3_plus_DsTS_aligned.fa
-
-- In OSC RStudio, set the working directory:
-
+**Troubleshooting**
+Slurm output showed:
 ```
-setwd("/fs/ess/PAS2880/users/dengyaxin1156/TS_BAHD_project_final")
+mafft: command not found
+module 'mafft' does not exist
 ```
-- Created an R script scripts/plot_bahd_tree.R using the seqinr and ape
-packages to:
+**Fix**
+Installed MAFFT into conda environment:
+```bash
+module load miniconda3
+conda activate blast_env
+conda install -c bioconda mafft
+```
+Re-ran job; output alignment file is valid.
+**Next step**
+Build a phylogenetic tree in R.
+## 2025-12-05 — Phylogeny construction
+**Process**
+Initial error: wrong filename in plot_bahd_tree.R (an old name from previous messy project).
 
-  - read the MAFFT alignment,
-
-  - compute a distance matrix (dist.alignment),
-
-  - build a neighbor-joining tree (nj),
-
-  - save the tree as Newick, and
-
-  - plot the tree to a PNG file.
-
-- Ran the script in RStudio:
+Corrected path:
 ```r
-library(seqinr)
-library(ape)
+align_file <- "03_alignments/BAHD_clade3_plus_DsTS_aligned.fa"
+```
+Re-ran:
+```r
 source("scripts/plot_bahd_tree.R")
 ```
-New files generated:
+**Outputs generated**
+  - 04_phylogeny/BAHD_tree_nj.nwk
 
-  - 04_phylogeny/BAHD_tree.nwk
-
-  - 05_results/BAHD_tree_basic.png
-
-## 2025-12-05 (fixing MAFFT alignment)
-
-- Submitted `scripts/mafft_bahd.slurm` and noticed that the output file
-  `03_alignments/BAHD_clade3_plus_DsTS_aligned.fa` was empty.
-- I Checked the Slurm log file `03_alignments/mafft_bahd_42370166.out`, which showed:
-
-  - `Lmod has detected the following error: The following module(s) are unknown: "mafft"`
-  - `/var/spool/slurmd/...: line 22: mafft: command not found`
-
-  This indicated that there is no `mafft` module on OSC.
-
-- Solution:
-  - Loaded miniconda and activated the existing `blast_env` environment.
-  - Installed MAFFT into that environment:
-
-```bash
-module load miniconda3/24.1.2-py310
-source activate blast_env
-conda install -y -c bioconda mafft
-```
-
-- Updated scripts/mafft_bahd.slurm to:
-
-  - load miniconda3/24.1.2-py310
-
-  - activate blast_env
-
-  - then run mafft --auto ...
-
-- Re-submitted the job:
-
-```bash
-cd /fs/ess/PAS2880/users/dengyaxin1156/TS_BAHD_project_final
-sbatch scripts/mafft_bahd.slurm
-```
-
-The output was:
-```
-Submitted batch job 42370364
-```
-After the job finished, the file 03_alignments/BAHD_clade3_plus_DsTS_aligned.fa
-contained the expected multiple sequence alignment.
-
-### 2025-12-07 (Fixing wrong alignment filename)
-
-- When running `scripts/plot_bahd_tree.R`, the script returned an error because
-  the alignment filename was still set to an old name from my previous,
-  disorganized project (`03_alignments/BAHD_ref_protein_aligned.fa`).
-
-- After checking the new project folder structure, I confirmed the correct file is:
-
-  `03_alignments/BAHD_clade3_ref_plus_DsTS_aligned.fa`
-
-- Updated the script to:
-
-```r
-align_file <- "03_alignments/BAHD_clade3_ref_plus_DsTS_aligned.fa"
-```
-
-- Re-ran the script (via Rscript due to RStudioGD error) and successfully generated:
-
-  - 04_phylogeny/BAHD_tree.nwk
-
-  - 05_results/BAHD_tree_basic.png
-
-### 2025-12-07 SNP analysis of TS and TS-like CDS
-
-#### Preparing CDS input
-  - Combined Atropa belladonna TS CDS (4 isoforms) and the Datura stramonium TS candidate CDS into a single FASTA file:
+  - 05_results/BAHD_tree_nj.pdf
+**Next step**
+Perform SNP analysis of TS CDS.
+## 2025-12-07 — Preparing TS-like CDS for SNP analysis
+**Rationale**
+To compare Atropa TS isoforms with the Datura TS-like candidate, I needed a joint CDS FASTA file.
+**Process**
+Combined sequences:
 ```bash
 cat 00_raw/Atropa_TS.cds.fa 00_raw/Datura_TS_candidate.cds.fa > 00_raw/TS_like_cds.fa
 ```
-#### MAFFT alignment of TS-like CDS
-Submitted MAFFT alignment job using the Slurm script
-
-scripts/mafft_ts_cds.slurm:
+Submitted MAFFT job:
 ```bash
 sbatch scripts/mafft_ts_cds.slurm
 ```
-The output was:
-```
-Submitted batch job 42370747
+Output confirmed:
 
 03_snp/TS_like_cds_aligned.fa
-```
-SNP calling using snp-sites
+## 2025-12-07 — SNP-sites installation + SNP calling
+**Issue**
 
-Installed snp-sites into the course Conda environment (blast_env):
+snp-sites is not available as an OSC module.
 
+**Fix**
+
+Installed into conda env:
 ```bash
-module load miniconda3/24.1.2-py310
-source activate blast_env
-conda config --add channels bioconda
-conda config --add channels conda-forge
-conda config --add channels defaults
 conda install -y snp-sites
 ```
-Submitted SNP calling job:
-```
+**Process**
+
+Ran SNP calling:
+```bash
 sbatch scripts/snp_ts_cds.slurm
 ```
 
-The output was:
-```
-Submitted batch job 42370753
+Output:
 
 03_snp/TS_like_snps.vcf
-```
 
-## R analysis and visualization
+## 2025-12-08 — R-based SNP summary & plotting
 
-I run R script scripts/analyze_snps.R in OSC RStudio:
+**Issue**
+
+While running:
 ```r
-setwd("/fs/ess/PAS2880/users/dengyaxin1156/TS_BAHD_project_final")
-library(tidyverse)
 source("scripts/analyze_snps.R")
 ```
-New result files were:
+
+I got:
+```
+unused argument (name = "non_missing_calls")
+```
+**Diagnosis**
+
+OSC uses an older dplyr version that does not support:
+
+count(..., name=)
+
+**Fix**
+
+Replaced with:
+```r
+group_by(sample) |> summarise(non_missing_calls = n())
+```
+
+**Result**
+
+Successfully generated:
+
+  - 05_results/TS_like_snp_counts.tsv
+
+  - 05_results/TS_like_snp_counts.png
+
+**General cleanup (from feedback)**
+
+  - Ensured raw data stays in 00_raw/
+
+  - Ensured all results go to 05_results/
+
+  - Ensured alignment and SNP intermediates go to 03_alignments / 03_snp
+
+  - Added .gitignore to avoid committing raw data and large results
+
+  - Used only relative paths inside scripts
+
+  - Rewrote scripts to include set -euo pipefail and cd "$SLURM_SUBMIT_DIR"
+
+  ## 2025-12-10 — Diagnosis of SNP counting issue & correction of analysis logic
+
+**Problem**
+
+While reviewing my SNP barplot and after instructor feedback, I realized that all sequences showed
+the same SNP count. This was biologically unlikely and indicated that the metric being calculated
+was incorrect.
+
+**Diagnosis**
+
+`snp-sites` outputs only positions where *at least one* sequence shows variation.  
+This means:
+
+- Every sample receives a genotype at each SNP position  
+- Counting "non-missing genotype calls" (`genotype != "."`) will produce **the same number for every sequence**
+
+This explains why my earlier barplot showed identical bar heights.
+
+**Correct biological measure**
+
+To quantify divergence among sequences, I need to count **ALT alleles** per sample:
+
+- `0` = same as REF  
+- `1`, `2`, … = true alternate allele  
+- So SNP differences must be counted where allele ≠ 0  
+
+**Fix implemented**
+
+I rewrote part of `scripts/analyze_snps.R`:
+
+```r
+mutate(
+  genotype_clean = str_replace(genotype, "\\|", "/"),
+  gt_main = str_split_fixed(genotype_clean, "/", 2)[,1],
+  is_alt = !is.na(gt_main) & gt_main != "0"
+)
+```
+Then ALT SNPs were counted as:
+```r
+group_by(sample) |> summarise(alt_snps = sum(is_alt))
+```
+**Outcome**
+
+The updated barplot now correctly reflects:
+
+variation among the four Atropa TS isoforms
+
+greater divergence between Atropa and Datura TS candidates
+
+**Files updated**
+
+- scripts/analyze_snps.R (final corrected version)
 
 - 05_results/TS_like_snp_counts.tsv
 
 - 05_results/TS_like_snp_counts.png
+
+**Next steps**
+
+Update protocol.md and final_report.md to reflect the corrected SNP metric and interpretation.
