@@ -1,7 +1,9 @@
 # Tropane Alkaloid Acyltransferases in *Datura stramonium*
 ### Final Project – HCS Bioinformatics (Autumn 2025)
 **Author:** Yaxin Deng  
+
 **Instructor**: Jelmer Poelstra
+
 **Project directory:** `/fs/ess/PAS2880/users/dengyaxin1156/TS_BAHD_project_final/`
 
 ---
